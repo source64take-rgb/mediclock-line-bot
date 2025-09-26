@@ -214,14 +214,21 @@ function createResultFlexMessage(occupationKey, prefectureKey) {
 
 // メッセージ処理関数
 async function handleEvent(event) {
-  if (event.type !== 'message' && event.type !== 'postback') {
+  if (event.type !== 'message' && event.type !== 'postback' && event.type !== 'follow') {
     return Promise.resolve(null);
   }
 
   let replyMessages = [];
 
-  if (event.type === 'message') {
-    // テキストメッセージの処理
+  // 友だち追加時の処理
+  if (event.type === 'follow') {
+    replyMessages.push({
+      type: 'text',
+      text: '🦷 メディクロック求人検索ボットへようこそ！\n\n下のメニューから「求人検索スタート」をタップして、歯科のお仕事を探してみましょう！\n\n求人情報はメディクロックジョブと連携しています。'
+    });
+  }
+  // テキストメッセージの処理
+  else if (event.type === 'message') {
     if (event.message.type === 'text') {
       const text = event.message.text.toLowerCase();
       
@@ -231,10 +238,15 @@ async function handleEvent(event) {
           text: '🦷 メディクロック求人検索へようこそ！\n\nまず、どの職種をお探しですか？',
           quickReply: createOccupationQuickReply()
         });
+      } else if (text.includes('ヘルプ') || text.includes('使い方') || text.includes('help')) {
+        replyMessages.push({
+          type: 'text',
+          text: '📋 使い方ガイド\n\n1️⃣ 下のメニューから「求人検索スタート」をタップ\n2️⃣ 職種を選択（歯科医師、歯科衛生士など）\n3️⃣ 勤務地域を選択\n4️⃣ 検索結果を確認\n5️⃣ メディクロックジョブで詳細確認・応募\n\n困った時はいつでも「ヘルプ」と送信してください！'
+        });
       } else {
         replyMessages.push({
           type: 'text',
-          text: '求人を検索するには「求人検索」または「はじめる」と送信してください！',
+          text: '下のメニューから「求人検索スタート」をタップするか、「はじめる」と送信してください！\n\n使い方がわからない場合は「ヘルプ」と送信してください。',
           quickReply: createOccupationQuickReply()
         });
       }
@@ -245,7 +257,23 @@ async function handleEvent(event) {
     const params = new URLSearchParams(data);
     const action = params.get('action');
 
-    if (action === 'select_occupation') {
+    if (action === 'start_search') {
+      // リッチメニューの「求人検索スタート」
+      replyMessages.push({
+        type: 'text',
+        text: '🦷 求人検索を開始します！\n\nまず、どの職種をお探しですか？',
+        quickReply: createOccupationQuickReply()
+      });
+      
+    } else if (action === 'help') {
+      // リッチメニューの「ヘルプ」
+      replyMessages.push({
+        type: 'text',
+        text: '📋 メディクロック求人ボット使い方\n\n🔍 求人検索の流れ:\n1️⃣ 職種を選択\n2️⃣ 勤務地域を選択  \n3️⃣ 検索結果を確認\n4️⃣ メディクロックジョブで応募\n\n💡 対応職種:\n• 歯科医師 🦷\n• 歯科衛生士 ✨\n• 歯科技工士 🔧\n• 歯科助手 🤝\n• 受付 📋\n• 医療事務 💼\n\n🗾 対応エリア:\n全国主要都市（東京、大阪、愛知など）\n\n何か困ったことがあれば、いつでもメニューからヘルプを確認できます！',
+        quickReply: createOccupationQuickReply()
+      });
+      
+    } else if (action === 'select_occupation') {
       const occupationKey = params.get('occupation');
       const occupation = OCCUPATION_MAP[occupationKey];
       
@@ -304,6 +332,61 @@ app.get('/', (req, res) => {
     message: 'メディクロック求人ボット WebhookサーバーV1.0',
     timestamp: new Date().toISOString()
   });
+});
+
+// リッチメニューセットアップ用エンドポイント
+app.get('/setup', async (req, res) => {
+  try {
+    const action = req.query.action || 'status';
+    
+    switch (action) {
+      case 'create':
+        const richMenuId = await createSimpleRichMenu();
+        res.json({ 
+          success: true, 
+          message: 'リッチメニューを作成しました',
+          richMenuId: richMenuId
+        });
+        break;
+        
+      case 'delete':
+        const richMenus = await client.getRichMenuList();
+        for (const menu of richMenus) {
+          await client.deleteRichMenu(menu.richMenuId);
+        }
+        res.json({ success: true, message: '既存のリッチメニューを削除しました' });
+        break;
+        
+      case 'status':
+        const menus = await client.getRichMenuList();
+        let defaultId = null;
+        try {
+          defaultId = await client.getDefaultRichMenuId();
+        } catch (e) {
+          // デフォルトなし
+        }
+        res.json({ 
+          success: true, 
+          menus: menus,
+          defaultRichMenuId: defaultId
+        });
+        break;
+        
+      default:
+        res.json({ 
+          success: false, 
+          message: '利用可能なアクション: create, delete, status' 
+        });
+    }
+    
+  } catch (error) {
+    console.error('Setup error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'エラーが発生しました', 
+      error: error.message 
+    });
+  }
 });
 
 // サーバー起動（ローカル開発用）
