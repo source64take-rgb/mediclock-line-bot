@@ -139,7 +139,7 @@ function createRegionQuickReply(occupationKey) {
       type: 'action',
       action: {
         type: 'postback',
-        label: `${data.emoji} ${data.name}`,
+        label: data.name,
         data: `action=select_region&occupation=${occupationKey}&region=${key}`
       }
     }))
@@ -154,7 +154,7 @@ function createPrefectureQuickReply(occupationKey, regionKey) {
       type: 'action',
       action: {
         type: 'postback',
-        label: `${data.emoji} ${data.name}`,
+        label: data.name,
         data: `action=select_prefecture&occupation=${occupationKey}&prefecture=${key}`
       }
     }));
@@ -231,7 +231,7 @@ function createResultFlexMessage(occupationKey, prefectureKey) {
               },
               {
                 type: 'text',
-                text: `${prefecture.emoji} ${prefecture.name}`,
+                text: prefecture.name,
                 size: 'sm',
                 weight: 'bold',
                 flex: 0,
@@ -332,11 +332,19 @@ async function handleEvent(event) {
       const regionKey = params.get('region');
       const region = REGION_MAP[regionKey];
       
-      replyMessages.push({
-        type: 'text',
-        text: `${region.emoji} ${region.name}を選択しました！\n\n都道府県を選択してください：`,
-        quickReply: createPrefectureQuickReply(occupationKey, regionKey)
-      });
+      if (!region) {
+        replyMessages.push({
+          type: 'text',
+          text: 'エラーが発生しました。もう一度お試しください。',
+          quickReply: createOccupationQuickReply()
+        });
+      } else {
+        replyMessages.push({
+          type: 'text',
+          text: `${region.name}を選択しました！\n\n都道府県を選択してください：`,
+          quickReply: createPrefectureQuickReply(occupationKey, regionKey)
+        });
+      }
       
     } else if (action === 'select_prefecture') {
       const occupationKey = params.get('occupation');
