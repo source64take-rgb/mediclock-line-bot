@@ -10,10 +10,6 @@
     {
       "src": "/webhook",
       "dest": "/api/webhook.js"
-    },
-    {
-      "src": "/setup",
-      "dest": "/api/setup.js"
     }
   ]
 }
