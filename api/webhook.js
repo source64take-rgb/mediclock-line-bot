@@ -87,8 +87,7 @@ const searchURL = buildMediclockJobURL(occupationKey, prefectureKey);
 return {
 type: 'flex',
 altText: `${occupation.name} × ${prefecture.name}の求人検索結果`,
-contents: 
-{
+contents: {
 type: 'bubble',
 hero: {
 type: 'box',
